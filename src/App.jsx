@@ -371,7 +371,7 @@ function ChequePayment({ token, currentUser }) {
   const [msg, setMsg] = useState(null);
   const [records, setRecords] = useState([]);
 
-  const WINGS = ["A","B","C","D","E","F"];
+  const WINGS = ["A","B","C","D","E","F","G"];
   const BANKS = ["State Bank of India","Bank of Maharashtra","HDFC Bank","ICICI Bank","Axis Bank","Punjab National Bank","Canara Bank","Union Bank","Bank of Baroda","Kotak Mahindra Bank","Other"];
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -785,7 +785,7 @@ function MembersTab({ token, members, onRefresh, currentUser }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
-  const WINGS = ["A","B","C","D","E","F"];
+  const WINGS = ["A","B","C","D","E","F","G"];
 
   async function handleAdd() {
     if (!form.flat || !form.wing || !form.name) { setMsg({ type:"error", text:"Flat no, wing and name are required." }); return; }
