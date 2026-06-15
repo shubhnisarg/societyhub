@@ -22,7 +22,7 @@ const CONFIG = {
   SPREADSHEET_ID: "1odcykU6dYGkfpfywM6zGhJzJ-O5IJhZvmC-VE5pPn30",
   CLIENT_ID:      "495720211481-69rv0h93ajenbo2plau0d94bkujr7a4q.apps.googleusercontent.com",
   SCOPES:         "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
-  DRIVE_FOLDER_ID:"1S8DJLtsxIGXwzAVRHbLZjGASeL0hKhvu",
+  DRIVE_FOLDER_ID:"1S8DJLtsxIGXwzAVRHbLZjGASeL0hKhvu"
 };
 
 const SHEETS = {
@@ -237,34 +237,46 @@ function Alert({ type, children, onClose }) {
 }
 
 function ImageCapture({ label, onCapture, preview }) {
-  const inputRef = useRef();
+  const cameraRef = useRef();
+  const uploadRef = useRef();
+
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const blob = await compressImage(file);
+    onCapture(blob, URL.createObjectURL(blob));
+  }
+
   return (
     <div className="field full">
       {label && <label>{label}</label>}
-      <div className="img-capture-area" onClick={() => inputRef.current.click()}>
-        {preview
-          ? <img src={preview} className="img-preview" alt="preview" />
-          : <div>
-              <div style={{ fontSize: 32, marginBottom: 6 }}>📷</div>
-              <div style={{ fontSize: 13, color: "#7A9199" }}>Tap to take photo or choose file</div>
-              <div style={{ fontSize: 11, color: "#7A9199", marginTop: 4 }}>Image will be automatically compressed before upload</div>
+      {preview
+        ? <div>
+            <img src={preview} className="img-preview" alt="preview"
+              style={{ display:"block", width:"100%", maxHeight:200, objectFit:"contain", borderRadius:10, border:"1.5px solid #EDE8E0" }} />
+            <button className="btn btn-secondary" style={{ marginTop:8, fontSize:12, padding:"5px 14px" }}
+              onClick={() => { onCapture(null, null); cameraRef.current.value=""; uploadRef.current.value=""; }}>
+              ✕ Remove Image
+            </button>
+          </div>
+        : <div className="img-capture-area">
+            <div style={{ fontSize:28, marginBottom:8 }}>🖼️</div>
+            <div style={{ fontSize:13, color:"#3D4F56", fontWeight:500, marginBottom:12 }}>Attach image or document</div>
+            <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
+              <button className="btn btn-primary" style={{ fontSize:13, padding:"8px 18px" }}
+                onClick={() => cameraRef.current.click()}>
+                📷 Take Photo
+              </button>
+              <button className="btn btn-secondary" style={{ fontSize:13, padding:"8px 18px" }}
+                onClick={() => uploadRef.current.click()}>
+                📁 Upload from Device
+              </button>
             </div>
-        }
-      </div>
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-        onChange={async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const blob = await compressImage(file);
-          onCapture(blob, URL.createObjectURL(blob));
-        }}
-      />
-      {preview && (
-        <button className="btn btn-secondary" style={{ marginTop: 6, fontSize: 12, padding: "5px 12px", width: "fit-content" }}
-          onClick={() => { onCapture(null, null); inputRef.current.value = ""; }}>
-          ✕ Remove Image
-        </button>
-      )}
+            <div style={{ fontSize:11, color:"#7A9199", marginTop:10 }}>JPG, PNG or PDF · Auto-compressed · Saved to Google Drive</div>
+          </div>
+      }
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={handleFile} />
+      <input ref={uploadRef} type="file" accept="image/*,application/pdf" style={{ display:"none" }} onChange={handleFile} />
     </div>
   );
 }
@@ -348,7 +360,9 @@ function SetupGuide({ token, onHeadersWritten }) {
 }
 
 // ─── CHEQUE PAYMENT ───────────────────────────────────────────────────────────
-function ChequePayment({ token, members, currentUser }) {
+// Note: Cheque payments are open to ALL society members (not just committee).
+// Name and mobile are free-text — no dropdown restriction.
+function ChequePayment({ token, currentUser }) {
   const empty = { wing: "", flat: "", name: "", mobile: "", chequeNo: "", bank: "", amount: "", chequeDate: today() };
   const [form, setForm] = useState(empty);
   const [imgBlob, setImgBlob] = useState(null);
@@ -362,15 +376,12 @@ function ChequePayment({ token, members, currentUser }) {
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
-  function fillFromMember(name) {
-    const m = members.find(r => r[2] === name);
-    if (m) { set("wing", m[1] || ""); set("flat", m[0] || ""); set("mobile", m[3] || ""); }
-    set("name", name);
-  }
-
   async function handleSubmit() {
     if (!form.wing || !form.flat || !form.name || !form.chequeNo || !form.bank || !form.amount || !form.chequeDate) {
       setMsg({ type: "error", text: "Please fill all required fields (marked with *)." }); return;
+    }
+    if (!/^\d{10}$/.test(form.mobile) && form.mobile !== "") {
+      setMsg({ type: "error", text: "Mobile number must be 10 digits if provided." }); return;
     }
     if (!token) { setMsg({ type: "error", text: "Please sign in first." }); return; }
     setLoading(true); setMsg(null);
@@ -391,7 +402,11 @@ function ChequePayment({ token, members, currentUser }) {
   return (
     <div>
       <div className="page-title">🏦 Cheque Payment Entry</div>
-      <div className="page-desc">Record cheques received from members toward maintenance or other dues.</div>
+      <div className="page-desc">Record cheques received from any society member toward maintenance or other dues.</div>
+      <div className="alert alert-info" style={{ marginBottom: 18 }}>
+        <span>ℹ️</span>
+        <span>This form is open to <strong>all society members</strong>. Enter name and mobile manually — no committee restriction applies here.</span>
+      </div>
       {msg && <Alert type={msg.type} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
       <div className="card">
@@ -399,14 +414,12 @@ function ChequePayment({ token, members, currentUser }) {
         <div className="form-grid">
           <div className="field">
             <label>Member Name *</label>
-            <select value={form.name} onChange={e => fillFromMember(e.target.value)}>
-              <option value="">— Select Member —</option>
-              {members.map((m, i) => <option key={i} value={m[2]}>{m[2]} ({m[1]}-{m[0]})</option>)}
-            </select>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full name of flat owner" />
           </div>
           <div className="field">
-            <label>Mobile</label>
-            <input value={form.mobile} onChange={e => set("mobile", e.target.value)} placeholder="Auto-filled" />
+            <label>Mobile Number</label>
+            <input value={form.mobile} onChange={e => set("mobile", e.target.value.replace(/\D/g,"").slice(0,10))}
+              placeholder="10-digit mobile number" maxLength={10} inputMode="numeric" />
           </div>
           <div className="field">
             <label>Wing *</label>
@@ -508,7 +521,11 @@ function CashWithdrawal({ token, members, currentUser }) {
   return (
     <div>
       <div className="page-title">💵 Cash Withdrawal</div>
-      <div className="page-desc">Record petty cash handed out to committee members for society activities.</div>
+      <div className="page-desc">Record petty cash handed out to authorised committee members only.</div>
+      <div className="alert alert-warn" style={{ marginBottom: 18 }}>
+        <span>⚠️</span>
+        <span><strong>Committee members only.</strong> Only registered committee members appear in this dropdown. Add members in the Committee tab first.</span>
+      </div>
       {msg && <Alert type={msg.type} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
       <div className="card">
@@ -629,6 +646,10 @@ function ExpenseTracker({ token, members, currentUser }) {
     <div>
       <div className="page-title">📊 Expense Tracker</div>
       <div className="page-desc">Log all society expenses with invoice capture — utility bills, salaries, repairs, and more.</div>
+      <div className="alert alert-warn" style={{ marginBottom: 18 }}>
+        <span>⚠️</span>
+        <span><strong>Committee members only</strong> appear in Spent By and Withdrawn By dropdowns. Cash expenses must be linked to a registered committee member.</span>
+      </div>
       {msg && <Alert type={msg.type} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
       <div className="card">
@@ -780,8 +801,8 @@ function MembersTab({ token, members, onRefresh, currentUser }) {
 
   return (
     <div>
-      <div className="page-title">👥 Members Master List</div>
-      <div className="page-desc">Add and manage flat owners. Names here appear in dropdowns across all modules.</div>
+      <div className="page-title">👥 Committee Members</div>
+      <div className="page-desc">Manage committee members who are authorised for cash withdrawals and expense entries. These names appear in Cash Out and Expense dropdowns.</div>
       {msg && <Alert type={msg.type} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
       <div className="card">
@@ -799,8 +820,8 @@ function MembersTab({ token, members, onRefresh, currentUser }) {
             <input value={form.flat} onChange={e => set("flat", e.target.value)} placeholder="e.g. 101" />
           </div>
           <div className="field">
-            <label>Owner Name *</label>
-            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full name" />
+            <label>Committee Member Name *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full name of committee member" />
           </div>
           <div className="field">
             <label>Mobile Number</label>
@@ -1266,9 +1287,9 @@ function ViewRecords({ token }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+// Setup tab hidden from nav — accessible only when needed via setTab("setup")
 const TABS = [
-  { id:"setup",      label:"Setup",       icon:"⚙️" },
-  { id:"members",    label:"Members",     icon:"👥" },
+  { id:"members",    label:"Committee",   icon:"👥" },
   { id:"cheque",     label:"Cheques",     icon:"🏦" },
   { id:"withdrawal", label:"Cash Out",    icon:"💵" },
   { id:"expense",    label:"Expenses",    icon:"📊" },
@@ -1277,7 +1298,7 @@ const TABS = [
 ];
 
 export default function App() {
-  const [tab, setTab] = useState("setup");
+  const [tab, setTab] = useState("members");
   const [token, setToken] = useState(null);
   const [currentUser, setCurrentUser] = useState("");
   const [members, setMembers] = useState([]);
@@ -1350,14 +1371,12 @@ export default function App() {
       </header>
 
       <main className="page">
-        {!token && tab !== "setup" && (
-          <Alert type="warn">
-            {isConfigured ? "Please sign in with Google to use this module." : "Complete the Setup tab first — fill in CONFIG values in the source code."}
-          </Alert>
+        {!token && (
+          <Alert type="warn">Please sign in with Google to use this portal.</Alert>
         )}
         {tab === "setup"      && <SetupGuide token={token} onHeadersWritten={() => refreshMembers()} />}
         {tab === "members"    && <MembersTab token={token} members={members} onRefresh={refreshMembers} currentUser={currentUser} />}
-        {tab === "cheque"     && <ChequePayment token={token} members={members} currentUser={currentUser} />}
+        {tab === "cheque"     && <ChequePayment token={token} currentUser={currentUser} />}
         {tab === "withdrawal" && <CashWithdrawal token={token} members={members} currentUser={currentUser} />}
         {tab === "expense"    && <ExpenseTracker token={token} members={members} currentUser={currentUser} />}
         {tab === "petty"      && <PettyCashTracker token={token} members={members} currentUser={currentUser} />}
