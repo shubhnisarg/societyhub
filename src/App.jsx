@@ -923,44 +923,82 @@ function PettyCashTracker({ token, members, currentUser }) {
   const [expenses, setExpenses] = useState([]);
   const [lastRefresh, setLastRefresh] = useState(null);
 
+  // Detect columns dynamically from header row so old & new sheet formats both work
+  const [wdAmtCol,   setWdAmtCol]   = useState(4);
+  const [expAmtCol,  setExpAmtCol]  = useState(3);
+  const [expModeCol, setExpModeCol] = useState(4);
+  const [expSpentCol,setExpSpentCol]= useState(8);
+
+  async function readSheetAll(sheetName, tok) {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(sheetName + "!A1:Z500")}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${tok}` } });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    const all = data.values || [];
+    return { headers: all[0] || [], rows: all.slice(1) };
+  }
+
+  function findCol(headers, ...names) {
+    for (const name of names) {
+      const idx = headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
   async function loadData() {
     if (!token) { setMsg({ type: "info", text: "Sign in to see live data. Showing public view." }); return; }
     setLoading(true); setMsg(null);
     try {
-      const [wd, ex] = await Promise.all([
-        readSheet(SHEETS.WITHDRAWALS, token),
-        readSheet(SHEETS.EXPENSES, token),
+      const [wdData, exData] = await Promise.all([
+        readSheetAll(SHEETS.WITHDRAWALS, token),
+        readSheetAll(SHEETS.EXPENSES, token),
       ]);
-      setWithdrawals(wd);
-      setExpenses(ex.filter(r => r[4] === "Cash")); // only cash expenses
+
+      // Auto-detect column positions from headers — handles both old and new sheet formats
+      const _wdAmt   = findCol(wdData.headers,  "Amount");
+      const _exAmt   = findCol(exData.headers,   "Amount");
+      const _exMode  = findCol(exData.headers,   "Payment Mode", "Mode");
+      const _exSpent = findCol(exData.headers,   "Spent By", "SpentBy");
+
+      const wdAmt   = _wdAmt   >= 0 ? _wdAmt   : 4;
+      const exAmt   = _exAmt   >= 0 ? _exAmt   : 3;
+      const exMode  = _exMode  >= 0 ? _exMode  : 4;
+      const exSpent = _exSpent >= 0 ? _exSpent : 8;
+
+      setWdAmtCol(wdAmt);
+      setExpAmtCol(exAmt);
+      setExpModeCol(exMode);
+      setExpSpentCol(exSpent);
+
+      setWithdrawals(wdData.rows);
+      setExpenses(exData.rows.filter(r => (r[exMode]||"").toLowerCase() === "cash"));
+
       setLastRefresh(new Date().toLocaleTimeString("en-IN"));
-      setMsg({ type: "success", text: "Data refreshed successfully." });
+      setMsg({ type: "success", text: `Data refreshed. ` +
+        `Withdrawal Amount col: ${wdAmt+1}, Expense Amount col: ${exAmt+1}, Spent By col: ${exSpent+1}.` });
     } catch (e) { setMsg({ type: "error", text: "Error loading data: " + e.message }); }
     setLoading(false);
   }
 
   useEffect(() => { loadData(); }, [token]);
 
-  // ── Aggregations ─────────────────────────────────────────────────────────
-  const totalWithdrawn = withdrawals.reduce((s, r) => s + (parseFloat(r[4]) || 0), 0);
-  const totalCashSpent = expenses.reduce((s, r) => s + (parseFloat(r[3]) || 0), 0);
+  // ── Aggregations using dynamically detected column indices ──────────────
+  const totalWithdrawn = withdrawals.reduce((s, r) => s + (parseFloat(r[wdAmtCol]) || 0), 0);
+  const totalCashSpent = expenses.reduce((s, r) => s + (parseFloat(r[expAmtCol]) || 0), 0);
   const balance = totalWithdrawn - totalCashSpent;
-
-  // Withdrawals: col[1]=WithdrawnBy, col[2]=ChequeNo, col[3]=Bank, col[4]=Amount, col[5]=Date
-  // Expenses (cash): col[3]=Amount, col[8]=SpentBy
-  // Logic: Treasurer holds ALL pooled cash. Treasurer reimburses whoever spent.
 
   const wdByMember = {};
   withdrawals.forEach(r => {
     const name = r[1] || "Unknown";
-    wdByMember[name] = (wdByMember[name] || 0) + (parseFloat(r[4]) || 0);
+    wdByMember[name] = (wdByMember[name] || 0) + (parseFloat(r[wdAmtCol]) || 0);
   });
 
   // Amount owed by Treasurer to each SpentBy member
   const netLiabilities = {};
   expenses.forEach(r => {
-    const spentBy = r[8] || "";
-    const amount  = parseFloat(r[3]) || 0;
+    const spentBy = r[expSpentCol] || "";
+    const amount  = parseFloat(r[expAmtCol]) || 0;
     if (spentBy) netLiabilities[spentBy] = (netLiabilities[spentBy] || 0) + amount;
   });
 
@@ -1324,8 +1362,8 @@ function ViewRecords({ token }) {
 // Setup tab hidden from nav — accessible only when needed via setTab("setup")
 // public:true tabs are visible to all visitors without sign-in
 const TABS = [
-  { id:"members",    label:"Committee",    icon:"👥", public:false },
-  { id:"members",    label:"Committee",    icon:"👥", public:false },
+{ id:"setup",      label:"Setup",        icon:"⚙️", public:false },  
+{ id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"cheque",     label:"Cheques",      icon:"🏦", public:false },
   { id:"withdrawal", label:"Cash Out",     icon:"💵", public:false },
   { id:"expense",    label:"Expenses",     icon:"📊", public:false },
