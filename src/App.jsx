@@ -942,7 +942,7 @@ function PettyCashTracker({ token, members, currentUser }) {
   useEffect(() => { loadData(); }, [token]);
 
   // ── Aggregations ─────────────────────────────────────────────────────────
-  const totalWithdrawn = withdrawals.reduce((s, r) => s + (parseFloat(r[2]) || 0), 0);
+  const totalWithdrawn = withdrawals.reduce((s, r) => s + (parseFloat(r[4]) || 0), 0);
   const totalCashSpent = expenses.reduce((s, r) => s + (parseFloat(r[3]) || 0), 0);
   const balance = totalWithdrawn - totalCashSpent;
 
@@ -1324,7 +1324,7 @@ function ViewRecords({ token }) {
 // Setup tab hidden from nav — accessible only when needed via setTab("setup")
 // public:true tabs are visible to all visitors without sign-in
 const TABS = [
-  { id:"setup",      label:"Setup",        icon:"⚙️", public:false },
+  { id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"cheque",     label:"Cheques",      icon:"🏦", public:false },
   { id:"withdrawal", label:"Cash Out",     icon:"💵", public:false },
