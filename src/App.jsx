@@ -19,10 +19,10 @@ const T = {
 
 // ─── CONFIG — FILL THESE IN ───────────────────────────────────────────────────
 const CONFIG = {
-  SPREADSHEET_ID: "YOUR_SPREADSHEET_ID_HERE",
-  CLIENT_ID:      "YOUR_GOOGLE_CLIENT_ID_HERE",
+  SPREADSHEET_ID: "1odcykU6dYGkfpfywM6zGhJzJ-O5IJhZvmC-VE5pPn30",
+  CLIENT_ID:      "495720211481-69rv0h93ajenbo2plau0d94bkujr7a4q.apps.googleusercontent.com",
   SCOPES:         "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
-  DRIVE_FOLDER_ID:"YOUR_DRIVE_FOLDER_ID_HERE",
+  DRIVE_FOLDER_ID:"1S8DJLtsxIGXwzAVRHbLZjGASeL0hKhvu",
 };
 
 const SHEETS = {
@@ -1324,6 +1324,7 @@ function ViewRecords({ token }) {
 // Setup tab hidden from nav — accessible only when needed via setTab("setup")
 // public:true tabs are visible to all visitors without sign-in
 const TABS = [
+  { id:"setup",      label:"Setup",        icon:"⚙️", public:false },
   { id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"cheque",     label:"Cheques",      icon:"🏦", public:false },
   { id:"withdrawal", label:"Cash Out",     icon:"💵", public:false },
