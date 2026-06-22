@@ -2073,13 +2073,14 @@ function ViewRecords({ token, onSignIn }) {
 // Setup tab hidden from nav — accessible only when needed via setTab("setup")
 // public:true tabs are visible to all visitors without sign-in
 const TABS = [
+//{ id:"setup",      label:"Setup",        icon:"⚙️", public:false },  
+{ id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"cheque",     label:"Cheques",      icon:"🏦", public:false },
   { id:"withdrawal", label:"Cash Out",     icon:"💵", public:false },
   { id:"expense",    label:"Expenses",     icon:"📊", public:false },
   { id:"petty",      label:"Cash Tracker", icon:"⚖️", public:true  },
   { id:"settle",     label:"Settlements",  icon:"🤝", public:false },
   { id:"records",    label:"View Records", icon:"📁", public:true  },
-
 ];
 
 export default function App() {
