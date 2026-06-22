@@ -160,6 +160,9 @@ const globalCSS = `
   .btn-update:disabled { background:#7A9199; cursor:not-allowed; transform:none; }
   .btn-cancel-edit { background:#EDE8E0; color:#3D4F56; border:none; padding:10px 20px; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; }
   .btn-cancel-edit:hover { background:#ddd5c8; }
+  .edit-mode-banner { display:flex; align-items:center; gap:14px; background:linear-gradient(135deg,#fff3e0,#fff8ed); border:2px solid #E8871A; border-radius:12px; padding:14px 20px; margin-bottom:16px; }
+  .edit-icon { font-size:24px; flex-shrink:0; }
+  .edit-text { flex:1; font-size:13px; color:#7c5012; line-height:1.6; }
 
   /* Edit mode styles */
   .edit-mode-banner { background:linear-gradient(135deg,#fff3e0,#fff8ed); border:2px solid #E8871A; border-radius:12px; padding:14px 18px; margin-bottom:18px; display:flex; align-items:center; gap:12px; }
@@ -534,6 +537,17 @@ function ChequePayment({ token, currentUser }) {
     setEditMode(false); setMsg(null);
   }
 
+  async function loadLastEntry() {
+    if (!token) return;
+    try {
+      const rows = await readSheet(SHEETS.CHEQUES, token);
+      if (!rows.length) return;
+      const last = rows[rows.length - 1];
+      setLastEntry({ rowIndex: rows.length, data: last });
+    } catch(e) {}
+  }
+  useEffect(() => { loadLastEntry(); }, [token]);
+
   async function handleSubmit() {
     if (!form.wing || !form.flat || !form.name || !form.chequeNo || !form.bank || !form.amount || !form.chequeDate) {
       setMsg({ type:"error", text:"Please fill all required fields (marked with *)." }); return;
@@ -573,6 +587,14 @@ function ChequePayment({ token, currentUser }) {
         <span>ℹ️</span>
         <span>This form is open to <strong>all society members</strong>. Enter name and mobile manually.</span>
       </div>
+
+      {/* Helper tip when a member is selected from pending table */}
+      {form.settledTo && !editMode && (
+        <div style={{background:"#e8f4f8", border:"1px solid #b0d9e8", borderRadius:9, padding:"10px 16px", marginBottom:12, fontSize:13, color:"#1A4D5C", display:"flex", gap:10, alignItems:"center"}}>
+          <span>👇</span>
+          <span>Form below is pre-filled for <strong>{form.settledTo}</strong> — verify details and click <strong>Confirm Settlement</strong>.</span>
+        </div>
+      )}
 
       {editMode && (
         <div className="edit-mode-banner">
@@ -676,6 +698,17 @@ function CashWithdrawal({ token, members, currentUser }) {
 
   function cancelEdit() { setForm(empty); setEditMode(false); setMsg(null); }
 
+  async function loadLastEntry() {
+    if (!token) return;
+    try {
+      const rows = await readSheet(SHEETS.WITHDRAWALS, token);
+      if (!rows.length) return;
+      const last = rows[rows.length - 1];
+      setLastEntry({ rowIndex: rows.length, data: last });
+    } catch(e) {}
+  }
+  useEffect(() => { loadLastEntry(); }, [token]);
+
   async function handleSubmit() {
     if (!form.name || !form.chequeNo || !form.bank || !form.amount || !form.date) {
       setMsg({ type:"error", text:"All fields except purpose are required." }); return;
@@ -713,6 +746,14 @@ function CashWithdrawal({ token, members, currentUser }) {
           <span style={{color:"#7A9199", fontSize:12}}>This entry is for bank statement reconciliation only.</span>
         </div>
       </div>
+
+      {/* Helper tip when a member is selected from pending table */}
+      {form.settledTo && !editMode && (
+        <div style={{background:"#e8f4f8", border:"1px solid #b0d9e8", borderRadius:9, padding:"10px 16px", marginBottom:12, fontSize:13, color:"#1A4D5C", display:"flex", gap:10, alignItems:"center"}}>
+          <span>👇</span>
+          <span>Form below is pre-filled for <strong>{form.settledTo}</strong> — verify details and click <strong>Confirm Settlement</strong>.</span>
+        </div>
+      )}
 
       {editMode && (
         <div className="edit-mode-banner">
@@ -810,6 +851,17 @@ function ExpenseTracker({ token, members, currentUser }) {
 
   function cancelEdit() { setForm({...empty, treasurer:form.treasurer}); setInvoiceBlob(null); setInvoicePreview(null); setEditMode(false); setMsg(null); }
 
+  async function loadLastEntry() {
+    if (!token) return;
+    try {
+      const rows = await readSheet(SHEETS.EXPENSES, token);
+      if (!rows.length) return;
+      const last = rows[rows.length - 1];
+      setLastEntry({ rowIndex: rows.length, data: last });
+    } catch(e) {}
+  }
+  useEffect(() => { loadLastEntry(); }, [token]);
+
   const CATEGORIES = {
     "Utility Bills":        ["Electricity Bill","Water Bill","Pipeline Charges"],
     "AMC / Contracts":      ["Lift AMC","Generator AMC","CCTV AMC","Fire Safety AMC","Pest Control"],
@@ -887,6 +939,14 @@ function ExpenseTracker({ token, members, currentUser }) {
           )}
         </div>
       </div>
+
+      {/* Helper tip when a member is selected from pending table */}
+      {form.settledTo && !editMode && (
+        <div style={{background:"#e8f4f8", border:"1px solid #b0d9e8", borderRadius:9, padding:"10px 16px", marginBottom:12, fontSize:13, color:"#1A4D5C", display:"flex", gap:10, alignItems:"center"}}>
+          <span>👇</span>
+          <span>Form below is pre-filled for <strong>{form.settledTo}</strong> — verify details and click <strong>Confirm Settlement</strong>.</span>
+        </div>
+      )}
 
       {editMode && (
         <div className="edit-mode-banner">
@@ -1257,11 +1317,37 @@ function SettlementTab({ token, members, currentUser }) {
     setLoadingDues(false);
   }
 
-  useEffect(() => { loadPendingDues(); }, [token]);
+  async function loadLastEntry() {
+    if (!token) return;
+    try {
+      const rows = await readSheet(SHEETS.SETTLEMENTS, token).catch(() => []);
+      if (!rows.length) return;
+      const last = rows[rows.length - 1];
+      setLastEntry({ rowIndex: rows.length, data: last });
+    } catch(e) {}
+  }
+  useEffect(() => { loadPendingDues(); loadLastEntry(); }, [token]);
+
+  const formRef = useRef(null);
 
   function selectMember(name) {
     set("settledTo", name);
     if (pendingDues[name]) set("amount", pendingDues[name].toFixed(2));
+    // Scroll to the settlement form so user sees it filled
+    setTimeout(() => {
+      if (formRef.current) {
+        formRef.current.scrollIntoView({ behavior:"smooth", block:"start" });
+        // Flash the form border to draw attention
+        formRef.current.style.border = "2px solid #E8871A";
+        formRef.current.style.boxShadow = "0 0 0 4px rgba(232,135,26,0.2)";
+        setTimeout(() => {
+          if (formRef.current) {
+            formRef.current.style.border = "";
+            formRef.current.style.boxShadow = "";
+          }
+        }, 1500);
+      }
+    }, 50);
   }
 
   async function handleSettle() {
@@ -1330,23 +1416,39 @@ function SettlementTab({ token, members, currentUser }) {
               <table className="records-table">
                 <thead><tr><th>Member</th><th>Net Pending Amount</th><th>Quick Action</th></tr></thead>
                 <tbody>
-                  {pendingList.map(([name, amt], i) => (
-                    <tr key={i}>
-                      <td><strong>{name}</strong></td>
-                      <td><strong style={{color:"#C0392B", fontSize:15}}>₹{amt.toLocaleString("en-IN",{minimumFractionDigits:2})}</strong></td>
-                      <td>
-                        <button className="btn btn-primary" style={{fontSize:12, padding:"5px 16px"}}
-                          onClick={() => selectMember(name)}>
-                          Settle →
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {pendingList.map(([name, amt], i) => {
+                    const isSelected = form.settledTo === name;
+                    return (
+                      <tr key={i} style={{background: isSelected ? "#fff3e0" : ""}}>
+                        <td><strong>{name}</strong></td>
+                        <td><strong style={{color:"#C0392B", fontSize:15}}>₹{amt.toLocaleString("en-IN",{minimumFractionDigits:2})}</strong></td>
+                        <td>
+                          {isSelected
+                            ? <span className="tag" style={{background:"#fff3e0", color:"#b45309", padding:"5px 14px"}}>
+                                ✏️ Selected — fill form below
+                              </span>
+                            : <button className="btn btn-primary" style={{fontSize:12, padding:"5px 16px"}}
+                                onClick={() => selectMember(name)}>
+                                Settle →
+                              </button>
+                          }
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
         }
       </div>
+
+      {/* Helper tip when a member is selected from pending table */}
+      {form.settledTo && !editMode && (
+        <div style={{background:"#e8f4f8", border:"1px solid #b0d9e8", borderRadius:9, padding:"10px 16px", marginBottom:12, fontSize:13, color:"#1A4D5C", display:"flex", gap:10, alignItems:"center"}}>
+          <span>👇</span>
+          <span>Form below is pre-filled for <strong>{form.settledTo}</strong> — verify details and click <strong>Confirm Settlement</strong>.</span>
+        </div>
+      )}
 
       {editMode && (
         <div className="edit-mode-banner">
@@ -1362,7 +1464,7 @@ function SettlementTab({ token, members, currentUser }) {
       {msg && <Alert type={msg.type} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
       {/* Settlement Form */}
-      <div className="card">
+      <div className="card" ref={formRef} style={{transition:"border 0.3s, box-shadow 0.3s"}}>
         <div className="card-title">✍️ {editMode ? "Edit Settlement" : "Record Settlement"}</div>
         <div style={{fontSize:12, color:"#7A9199", marginBottom:14}}>
           Click "Settle →" above to auto-fill, or select manually below.
@@ -1971,7 +2073,7 @@ function ViewRecords({ token, onSignIn }) {
 // Setup tab hidden from nav — accessible only when needed via setTab("setup")
 // public:true tabs are visible to all visitors without sign-in
 const TABS = [
-{ id:"setup",      label:"Setup",        icon:"⚙️", public:false },    
+{ id:"setup",      label:"Setup",        icon:"⚙️", public:false },  
 { id:"members",    label:"Committee",    icon:"👥", public:false },
   { id:"cheque",     label:"Cheques",      icon:"🏦", public:false },
   { id:"withdrawal", label:"Cash Out",     icon:"💵", public:false },
